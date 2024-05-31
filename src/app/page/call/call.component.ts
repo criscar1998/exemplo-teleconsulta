@@ -62,6 +62,13 @@ export class CallComponent implements OnInit, OnDestroy {
       });
   }
 
+  private stopLocalStream(){
+    if (this.localStream) {
+      this.localStream.getTracks().forEach((track) => track.stop());
+      this.videoElementLocal.nativeElement.srcObject = null;
+    }
+  }
+
   private createPeerConnection() {
     this.pc = new RTCPeerConnection(this.iceServers);
     this.pc.onicecandidate = (event) => {
@@ -131,6 +138,7 @@ export class CallComponent implements OnInit, OnDestroy {
         this.route.navigate(["/"]);
         this.notification(data.message);
         this.pc.close();
+        this.stopLocalStream();
       }
     });
 

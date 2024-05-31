@@ -38,6 +38,12 @@
         background: rgb(0, 0, 0, 0.8);
         border-radius: 5px;
 
+        @media (max-width:568px) {
+          width: 100px;
+          bottom: 0;
+          top:7%;
+        }
+
         .video-local {
             width: 100%;
             height: 100%;
