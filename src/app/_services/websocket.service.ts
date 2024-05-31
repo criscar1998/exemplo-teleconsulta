@@ -2,13 +2,14 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable, OnInit } from "@angular/core";
 import { BehaviorSubject } from "rxjs";
 import { Socket, io } from "socket.io-client";
+import { environment } from "../../environments/environment";
 
 @Injectable({
   providedIn: "root",
 })
 export class WebsocketService {
   private ws: Socket;
-  private url = "http://localhost:5000";
+  private url = environment.wsHost;
   public connectionStatus: BehaviorSubject<boolean> =
     new BehaviorSubject<boolean>(false);
 
