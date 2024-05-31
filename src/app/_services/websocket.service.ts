@@ -59,8 +59,8 @@ export class WebsocketService {
     this.ws.emit("ice candidate", candidate, roomId);
   }
 
-  public onIceCandidate(callback: (data: any) => void){
-    this.ws.on("ice candidate",callback);
+  public onIceCandidate(callback: (data: any) => void) {
+    this.ws.on("ice candidate", callback);
   }
 
   public offer(offer: RTCSessionDescriptionInit, roomId: string) {
@@ -77,5 +77,17 @@ export class WebsocketService {
 
   public onAnswer(callback: (data: any) => void) {
     this.ws.on("answer", callback);
+  }
+
+  public leaveRoom(roomId: string): void {
+    this.ws.emit("leave room", roomId);
+  }
+
+  public onLeaveRoom(callback: (data: any) => void) {
+    this.ws.on("leave room", callback);
+  }
+
+  public onUserLeft(callback: (data: any) => void) {
+    this.ws.on("user left", callback);
   }
 }

@@ -1,5 +1,9 @@
 <div class="page-call">
-  <div id="controls"></div>
+  <div id="controls">
+    <button mat-flat-button color="warn" (click)="leaveRoom()">
+      <mat-icon>call_end</mat-icon>
+    </button>
+  </div>
   <video
     class="video-remote"
     #videoElementRemote

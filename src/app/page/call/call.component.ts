@@ -6,14 +6,16 @@ import {
   ViewChild,
 } from "@angular/core";
 import { WebsocketService } from "../../_services/websocket.service";
-import { ActivatedRoute } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { CommonModule } from "@angular/common";
 import { MatSnackBar } from "@angular/material/snack-bar";
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
 
 @Component({
   selector: "app-call",
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule],
   templateUrl: "./call.component.html",
   styleUrls: ["./call.component.scss"],
 })
@@ -32,17 +34,20 @@ export class CallComponent implements OnInit, OnDestroy {
 
   constructor(
     private ws: WebsocketService,
-    private route: ActivatedRoute,
-    private _snackBar: MatSnackBar
+    private activeRoute: ActivatedRoute,
+    private _snackBar: MatSnackBar,
+    private route: Router
   ) {
-    this.roomId = this.route.snapshot.params["id"];
+    this.roomId = this.activeRoute.snapshot.params["id"];
     console.log(this.roomId);
   }
 
   ngOnInit(): void {
+    this.joinRoom();
     this.receiveOffer();
     this.receiveAnswer();
     this.receiveIceCandidate();
+    this.listingUserLeft();
     this.startLocalStream();
   }
 
@@ -116,6 +121,43 @@ export class CallComponent implements OnInit, OnDestroy {
       } catch (e) {
         console.error("Error adding received ice candidate", e);
       }
+    });
+  }
+
+  private listingUserLeft() {
+    this.ws.onUserLeft((data) => {
+      this.notification(data.message);
+    });
+  }
+
+  public leaveRoom() {
+    this.ws.onLeaveRoom((data) => {
+      if (data.status) {
+        this.route.navigate(["/"]);
+        this.notification(data.message);
+        this.pc.close();
+      }
+    });
+
+    this.ws.leaveRoom(this.roomId);
+  }
+
+  private joinRoom() {
+
+    this.ws.onJoinRoom((data) => {
+      if (!data.status) {
+        this.route.navigate(["/"]);
+      }
+      this.notification(data.message);
+    });
+
+    this.ws.joinRoom(this.roomId);
+  }
+
+  private notification(message: string) {
+    this._snackBar.open(message, "Ok", {
+      horizontalPosition: "left",
+      duration: 2300,
     });
   }
 

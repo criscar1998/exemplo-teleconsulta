@@ -1,3 +1,3 @@
 export const environment = {
-    wsHost: "http://localhost"
+    wsHost: "http://localhost:5000"
 };

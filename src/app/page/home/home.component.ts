@@ -7,6 +7,7 @@ import { WebsocketService } from "../../_services/websocket.service";
 import { FormsModule } from "@angular/forms";
 import { CommonModule } from "@angular/common";
 import { Router } from "@angular/router";
+import { MatSnackBar } from "@angular/material/snack-bar";
 
 @Component({
   selector: "app-home",
@@ -25,7 +26,10 @@ import { Router } from "@angular/router";
 export class HomeComponent {
   inputCode: string = "";
 
-  constructor(private ws: WebsocketService, private route: Router) {}
+  constructor(
+    private ws: WebsocketService, 
+    private route: Router,
+    private _snackBar: MatSnackBar) {}
 
   public openRoom() {
     this.ws.onCreateRoom((data) => {
