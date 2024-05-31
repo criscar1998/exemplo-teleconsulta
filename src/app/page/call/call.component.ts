@@ -44,11 +44,6 @@ export class CallComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.joinRoom();
-    this.receiveOffer();
-    this.receiveAnswer();
-    this.receiveIceCandidate();
-    this.listingUserLeft();
-    this.startLocalStream();
   }
 
   private startLocalStream() {
@@ -149,6 +144,12 @@ export class CallComponent implements OnInit, OnDestroy {
         this.route.navigate(["/"]);
       }
       this.notification(data.message);
+      this.receiveOffer();
+      this.receiveAnswer();
+      this.receiveIceCandidate();
+      this.listingUserLeft();
+      this.startLocalStream();
+      
     });
 
     this.ws.joinRoom(this.roomId);
