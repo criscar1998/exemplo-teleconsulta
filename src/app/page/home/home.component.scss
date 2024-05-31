@@ -1,0 +1,30 @@
+.page-home {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  .wrapper {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 10px;
+
+    .flex-form {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      justify-content: center;
+      min-width: 17em;
+      mat-form-field {
+        width: 100%;
+      }
+      button {
+        margin-top: 0.27em;
+      }
+    }
+
+    .new-room {
+        text-align: center;
+    }
+  }
+}
