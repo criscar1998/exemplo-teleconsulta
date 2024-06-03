@@ -17,6 +17,7 @@ import { User } from "../../_interfaces/user";
 import { userModel } from "../../_models/user.model";
 import { Socket } from "socket.io-client";
 import { MatGridListModule } from "@angular/material/grid-list";
+import { stunServers } from "../../_utils/iceServers";
 
 @Component({
   selector: "app-call",
@@ -32,12 +33,8 @@ export class CallComponent implements AfterViewInit, OnDestroy {
 
   public users = new Map();
 
-  private rtcConfiguration = {
-    iceServers: [
-      {
-        urls: "stun:stun.l.google.com:19302",
-      },
-    ],
+  private rtcConfiguration: RTCConfiguration = {
+    iceServers: stunServers
   };
 
   //view child
@@ -276,7 +273,7 @@ export class CallComponent implements AfterViewInit, OnDestroy {
     const name = this.renderer.createElement("div");
     this.renderer.addClass(name, "name-user");
     const text = this.renderer.createText(user.id);
-    
+
 
     const video = this.renderer.createElement("video");
     this.renderer.addClass(video, "responsive-video");
@@ -340,7 +337,7 @@ export class CallComponent implements AfterViewInit, OnDestroy {
 
     if (numVideos === 1) {
       container.style.gridTemplateColumns = '1fr'; // Define apenas uma coluna
-    }else {
+    } else {
       container.style.gridTemplateColumns = 'repeat(2, 1fr)';
     }
   }
