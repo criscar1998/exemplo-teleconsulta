@@ -1,5 +1,6 @@
 export interface User {
-    id: string,
-    name: string,
-    role: string
+    id: string;
+    player: HTMLElement;
+    pc: RTCPeerConnection;
+    dc: RTCDataChannel;
 }

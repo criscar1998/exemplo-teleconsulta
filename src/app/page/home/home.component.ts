@@ -8,6 +8,7 @@ import { FormsModule } from "@angular/forms";
 import { CommonModule } from "@angular/common";
 import { Router } from "@angular/router";
 import { MatSnackBar } from "@angular/material/snack-bar";
+import { Socket } from "socket.io-client";
 
 @Component({
   selector: "app-home",
@@ -25,36 +26,23 @@ import { MatSnackBar } from "@angular/material/snack-bar";
 })
 export class HomeComponent {
   inputCode: string = "";
+  private socket: Socket;
 
   constructor(
-    private ws: WebsocketService, 
+    private ws: WebsocketService,
     private route: Router,
-    private _snackBar: MatSnackBar) {}
-
-  public openRoom() {
-    this.ws.onCreateRoom((data) => {
-      if (data.status) {
-        this.route.navigate(["/chamada", data.roomId]);
-      }
-    });
-
-    this.ws.createRoom();
+    private _snackBar: MatSnackBar
+  ) {
+    this.socket = this.ws.connectToRoute();
   }
 
-  public joinRoom() {
-    if (this.inputCode.length == 0) {
-      alert("Informe um codigo de consulta");
-      return;
-    }
-
-    this.ws.onJoinRoom((data) => {
+  public openRoom() {
+    this.socket.on("create room", (data) => {
       if (data.status) {
         this.route.navigate(["/chamada", data.roomId]);
-      } else {
-        alert(data.message);
       }
     });
 
-    this.ws.joinRoom(this.inputCode);
+    this.socket.emit("create room");
   }
 }

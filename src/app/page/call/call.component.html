@@ -4,13 +4,8 @@
       <mat-icon>call_end</mat-icon>
     </button>
   </div>
-  <video
-    class="video-remote"
-    #videoElementRemote
-    autoplay
-    [autoplay]="true"
-  ></video>
-  <div class="box-video">
+  <div class="grid-system" #remoteVideosContainer></div>
+  <div class="box-video" [class.empty-room]="users.size == 0">
     <video
       class="video-local"
       #videoElementLocal

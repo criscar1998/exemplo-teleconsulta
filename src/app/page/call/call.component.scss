@@ -1,54 +1,82 @@
 .page-call {
-    width: 100%;
-    height: 100vh;
-    background: #1b181c;
-    position: relative;
+  width: 100%;
+  height: 100vh;
+  background: #1b181c;
+  position: relative;
 
-    #controls {
-        z-index: 9;
-        position: absolute;
-        bottom: 5%;
-        width: 200px;
-        height: 60px;
-        left: 50%;
-        border-radius: 5px;
-        transform: translateX(-50%);
-        display: flex;
-        gap: 5px;
-        justify-content: center;
-
-        mat-icon {
-          margin: 0;
-        }
-      }
-
-      .video-remote{
-        position: absolute;
-        width: 100%;
-        height: 100%;
-      }
-
-      .box-video {
-        z-index: 10;
-        position: absolute;
-        bottom: 5%;
-        right: 3%;
-        width: 200px;
-        height: 120px;
-        background: rgb(0, 0, 0, 0.8);
-        border-radius: 5px;
-
-        @media (max-width:568px) {
-          width: 100px;
-          bottom: 0;
-          top:7%;
-        }
-
-        .video-local {
-            width: 100%;
-            height: 100%;
-            border-radius: 5px;
-          }
-      }
-      
+  .grid-system {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-auto-rows: 1fr;
+    gap: 10px;
+    height: 100%;
+    gap: 0;
   }
+
+  .card-video {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+
+    .responsive-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 10px;
+      max-width: 800px;
+      max-height: 500px;
+    }
+  }
+
+  #controls {
+    z-index: 20;
+    position: absolute;
+    bottom: 5%;
+    width: 200px;
+    height: 60px;
+    left: 50%;
+    border-radius: 5px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+
+    mat-icon {
+      margin: 0;
+    }
+  }
+
+  .box-video {
+    z-index: 10;
+    position: absolute;
+    bottom: 5%;
+    right: 3%;
+    width: 200px;
+    height: 120px;
+    background: rgb(0, 0, 0, 0.8);
+    border-radius: 5px;
+    transition: all 1s;
+    box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3),
+      0 4px 8px 3px rgba(60, 64, 67, 0.15);
+
+    @media (max-width: 568px) {
+      width: 100px;
+    }
+
+    &.empty-room {
+      width: 100%;
+      height: 100%;
+      top: 0;
+      right: 0;
+    }
+
+    .video-local {
+      width: 100%;
+      height: 100%;
+      border-radius: 5px;
+    }
+  }
+}

@@ -1,8 +1,10 @@
 import {
+  AfterViewInit,
   Component,
   ElementRef,
   OnDestroy,
   OnInit,
+  Renderer2,
   ViewChild,
 } from "@angular/core";
 import { WebsocketService } from "../../_services/websocket.service";
@@ -11,39 +13,52 @@ import { CommonModule } from "@angular/common";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
+import { User } from "../../_interfaces/user";
+import { userModel } from "../../_models/user.model";
+import { Socket } from "socket.io-client";
+import { MatGridListModule } from "@angular/material/grid-list";
 
 @Component({
   selector: "app-call",
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatGridListModule],
   templateUrl: "./call.component.html",
   styleUrls: ["./call.component.scss"],
 })
-export class CallComponent implements OnInit, OnDestroy {
+export class CallComponent implements AfterViewInit, OnDestroy {
   public roomId!: string;
-  private pc!: RTCPeerConnection;
-  private localStream!: MediaStream;
-  private remoteStream!: MediaStream;
-  @ViewChild("videoElementRemote")
-  videoElementRemote!: ElementRef<HTMLVideoElement>;
+  private myStream!: MediaStream;
+  private socket;
+
+  public users = new Map();
+
+  private rtcConfiguration = {
+    iceServers: [
+      {
+        urls: "stun:stun.l.google.com:19302",
+      },
+    ],
+  };
+
+  //view child
+  @ViewChild("remoteVideosContainer", { static: true })
+  remoteVideosContainer!: ElementRef<HTMLDivElement>;
   @ViewChild("videoElementLocal")
   videoElementLocal!: ElementRef<HTMLVideoElement>;
-  private iceServers = {
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-  };
 
   constructor(
     private ws: WebsocketService,
     private activeRoute: ActivatedRoute,
     private _snackBar: MatSnackBar,
+    private renderer: Renderer2,
     private route: Router
   ) {
     this.roomId = this.activeRoute.snapshot.params["id"];
-    console.log(this.roomId);
+    this.socket = this.ws.connectToRoute();
   }
 
-  ngOnInit(): void {
-    this.joinRoom();
+  ngAfterViewInit(): void {
+    this.startLocalStream();
   }
 
   private startLocalStream() {
@@ -54,113 +69,243 @@ export class CallComponent implements OnInit, OnDestroy {
       })
       .then((stream) => {
         this.videoElementLocal.nativeElement.srcObject = stream;
-        this.localStream = stream;
-        this.createPeerConnection();
+        this.myStream = stream;
+        this.joinRoom();
       })
       .catch((error) => {
         console.error("Error accessing media devices.", error);
+        this.notification("Erro em acessar a webcam e microfone");
       });
   }
 
-  private stopLocalStream(){
-    if (this.localStream) {
-      this.localStream.getTracks().forEach((track) => track.stop());
-      this.videoElementLocal.nativeElement.srcObject = null;
+  private joinRoom() {
+    if (this.roomId) {
+      this.initConnection();
     }
   }
 
-  private createPeerConnection() {
-    this.pc = new RTCPeerConnection(this.iceServers);
-    this.pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        this.ws.iceCandidate(event.candidate, this.roomId);
-      }
-    };
-
-    this.pc.ontrack = (event) => {
-      if (!this.remoteStream) {
-        this.remoteStream = new MediaStream();
-        this.videoElementRemote.nativeElement.srcObject = this.remoteStream;
-      }
-      this.remoteStream.addTrack(event.track);
-    };
-
-    this.localStream.getTracks().forEach((track) => {
-      this.pc.addTrack(track, this.localStream);
-    });
-
-    this.createOffer();
-  }
-
-  private async createOffer() {
-    const offer = await this.pc.createOffer();
-    await this.pc.setLocalDescription(offer);
-    this.ws.offer(offer, this.roomId);
-  }
-
-  private receiveOffer() {
-    this.ws.onOffer(async (offer) => {
-      if (!this.pc) {
-        this.createPeerConnection();
-      }
-      await this.pc.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await this.pc.createAnswer();
-      await this.pc.setLocalDescription(answer);
-      this.ws.answer(answer, this.roomId);
-    });
-  }
-
-  private receiveAnswer() {
-    this.ws.onAnswer(async (answer) => {
-      await this.pc.setRemoteDescription(new RTCSessionDescription(answer));
-    });
-  }
-
-  private receiveIceCandidate() {
-    this.ws.onIceCandidate(async (candidate) => {
-      try {
-        await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (e) {
-        console.error("Error adding received ice candidate", e);
+  private setupSocketEvents() {
+    this.socket.on("disconnect-user", (data) => {
+      var user = this.users.get(data.id);
+      if (user) {
+        this.notification("Participante saiu da sala");
+        this.users.delete(data.id);
+        user.selfDestroy();
       }
     });
+
+    this.socket.on("call", (data) => {
+      let user = new userModel(data.id);
+      user.pc = this.createPeer(user);
+      this.users.set(data.id, user);
+
+      this.createOffer(user, this.socket);
+    });
+
+    this.socket.on("offer", (data) => {
+      var user = this.users.get(data.id);
+      if (user) {
+        this.answerPeer(user, data.offer, this.socket);
+      } else {
+        let user = new userModel(data.id);
+        user.pc = this.createPeer(user);
+        this.users.set(data.id, user);
+        this.answerPeer(user, data.offer, this.socket);
+      }
+    });
+
+    this.socket.on("answer", (data) => {
+      var user = this.users.get(data.id);
+      if (user) {
+        user.pc.setRemoteDescription(data.answer);
+      }
+    });
+
+    this.socket.on("candidate", (data) => {
+      var user = this.users.get(data.id);
+      if (user) {
+        user.pc.addIceCandidate(data.candidate);
+      } else {
+        let user = new userModel(data.id);
+        user.pc = this.createPeer(user);
+        user.pc.addIceCandidate(data.candidate);
+        this.users.set(data.id, user);
+      }
+    });
+
+    this.socket.on("leave room", (data) => {
+      var user = this.users.get(data.id);
+      if (data.id) {
+        this.users.delete(data.id);
+        user.selfDestroy();
+        console.log("usuario saiu da chamada");
+        this.notification("Participante saiu da chamada");
+      }
+    });
+
+    this.socket.on("disconnect-user", (data) => {
+      var user = this.users.get(data.id);
+      if (user) {
+        this.users.delete(data.id);
+        user.selfDestroy();
+        this.notification("Participante foi desconectado");
+      }
+    });
   }
 
-  private listingUserLeft() {
-    this.ws.onUserLeft((data) => {
+  private initConnection() {
+    this.socket.on("join room", (data) => {
       this.notification(data.message);
+      if (!data.status) {
+        this.route.navigate(["/"]);
+        return;
+      }
     });
+
+    this.setupSocketEvents();
+    this.socket.emit("join room", this.roomId);
+  }
+
+  private createOffer(user: User, socket: Socket) {
+    user.dc = user.pc.createDataChannel("chat");
+    this.setupDataChannel(user.dc);
+
+    user.pc
+      .createOffer()
+      .then((offer) => {
+        return user.pc.setLocalDescription(offer);
+      })
+      .then(() => {
+        socket.emit("offer", {
+          id: user.id,
+          offer: user.pc.localDescription,
+        });
+      })
+      .catch((error) => {
+        console.error("Error creating offer:", error);
+      });
+  }
+
+  private answerPeer(
+    user: User,
+    offer: RTCSessionDescriptionInit,
+    socket: Socket
+  ) {
+    console.log(
+      "Current signaling state before setRemoteDescription:",
+      user.pc.signalingState
+    );
+
+    user.pc
+      .setRemoteDescription(offer)
+      .then(() => {
+        console.log(
+          "Current signaling state after setRemoteDescription:",
+          user.pc.signalingState
+        );
+
+        console.log(
+          "Creating answer. Current signaling state:",
+          user.pc.signalingState
+        );
+
+        return user.pc.createAnswer();
+      })
+      .then((answer) => {
+        console.log(
+          "Current signaling state before setLocalDescription:",
+          user.pc.signalingState
+        );
+
+        return user.pc.setLocalDescription(answer);
+      })
+      .then(() => {
+        console.log(
+          "Set local description. Current signaling state:",
+          user.pc.signalingState
+        );
+
+        socket.emit("answer", {
+          id: user.id,
+          answer: user.pc.localDescription,
+        });
+      })
+      .catch((error) => {
+        console.error("Error answering peer:", error);
+      });
+  }
+
+  private createPeer(user: User) {
+    const pc = new RTCPeerConnection(this.rtcConfiguration);
+
+    pc.onicecandidate = (event) => {
+      if (!event.candidate) {
+        return;
+      }
+
+      this.socket.emit("candidate", {
+        id: user.id,
+        candidate: event.candidate,
+      });
+    };
+
+    for (const track of this.myStream.getTracks()) {
+      pc.addTrack(track, this.myStream);
+    }
+
+    pc.ontrack = (event) => {
+      if (user.player) {
+        return;
+      }
+      user.player = this.addVideoPlayer(event.streams[0]);
+    };
+
+    pc.ondatachannel = (event) => {
+      user.dc = event.channel;
+      this.setupDataChannel(user.dc);
+    };
+
+    return pc;
+  }
+
+  private addVideoPlayer(stream: MediaStream) {
+    const template = this.renderer.createElement("div");
+    this.renderer.addClass(template, "card-video");
+
+    const video = this.renderer.createElement("video");
+    this.renderer.addClass(video, "responsive-video");
+    video.autoplay = true;
+    video.srcObject = stream;
+
+    this.renderer.appendChild(template, video);
+    this.renderer.appendChild(
+      this.remoteVideosContainer.nativeElement,
+      template
+    );
+    this.adjustGrid();
+    return template;
+  }
+
+  private setupDataChannel(dataChannel: RTCDataChannel) {
+    dataChannel.onopen = this.checkDataChannelState;
+    dataChannel.onclose = this.checkDataChannelState;
+    dataChannel.onmessage = (e) => {
+      this.addMessage(e.data);
+    };
+  }
+
+  private addMessage(e: any) {
+    console.log(e);
+  }
+
+  private checkDataChannelState(event: Event) {
+    console.log("WebRTC channel state is:", event.type);
   }
 
   public leaveRoom() {
-    this.ws.onLeaveRoom((data) => {
-      if (data.status) {
-        this.route.navigate(["/"]);
-        this.notification(data.message);
-        this.pc.close();
-        this.stopLocalStream();
-      }
-    });
-
-    this.ws.leaveRoom(this.roomId);
-  }
-
-  private joinRoom() {
-
-    this.ws.onJoinRoom((data) => {
-      if (!data.status) {
-        this.route.navigate(["/"]);
-      }
-      this.notification(data.message);
-      this.receiveOffer();
-      this.receiveAnswer();
-      this.receiveIceCandidate();
-      this.listingUserLeft();
-      this.startLocalStream();
-      
-    });
-
-    this.ws.joinRoom(this.roomId);
+    this.socket.emit("leave room", this.roomId);
+    this.route.navigate(["/"]);
+    this.notification("Você saiu da sala");
   }
 
   private notification(message: string) {
@@ -170,7 +315,15 @@ export class CallComponent implements OnInit, OnDestroy {
     });
   }
 
+  private adjustGrid() {
+    const numVideos = this.remoteVideosContainer.nativeElement.children.length;
+    const numColumns = Math.ceil(Math.sqrt(numVideos));
+    this.remoteVideosContainer.nativeElement.style.gridTemplateColumns = `repeat(${numColumns}, 1fr)`;
+  }
+
   ngOnDestroy(): void {
-    //this.pc.close();
+    if (this.myStream) {
+      this.myStream.getTracks().forEach((track) => track.stop());
+    }
   }
 }

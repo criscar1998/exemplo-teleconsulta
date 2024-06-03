@@ -16,8 +16,6 @@ export class WebsocketService {
   constructor() {
     this.ws = io(this.url);
 
-    console.log(this.ws);
-
     this.ws.on("connect", () => {
       this.connectionStatus.next(true);
     });
@@ -37,57 +35,5 @@ export class WebsocketService {
 
   public closeConnection(): void {
     this.ws.disconnect();
-  }
-
-  public createRoom() {
-    this.ws.emit("create room");
-  }
-
-  public onCreateRoom(callback: (data: any) => void) {
-    this.ws.on("create room", callback);
-  }
-
-  public joinRoom(roomId: string) {
-    this.ws.emit("join room", roomId);
-  }
-
-  public onJoinRoom(callback: (data: any) => void) {
-    this.ws.on("join room", callback);
-  }
-
-  public iceCandidate(candidate: RTCIceCandidate, roomId: string) {
-    this.ws.emit("ice candidate", candidate, roomId);
-  }
-
-  public onIceCandidate(callback: (data: any) => void) {
-    this.ws.on("ice candidate", callback);
-  }
-
-  public offer(offer: RTCSessionDescriptionInit, roomId: string) {
-    this.ws.emit("offer", offer, roomId);
-  }
-
-  public onOffer(callback: (data: any) => void) {
-    this.ws.on("offer", callback);
-  }
-
-  public answer(answer: RTCSessionDescriptionInit, roomId: string) {
-    this.ws.emit("answer", answer, roomId);
-  }
-
-  public onAnswer(callback: (data: any) => void) {
-    this.ws.on("answer", callback);
-  }
-
-  public leaveRoom(roomId: string): void {
-    this.ws.emit("leave room", roomId);
-  }
-
-  public onLeaveRoom(callback: (data: any) => void) {
-    this.ws.on("leave room", callback);
-  }
-
-  public onUserLeft(callback: (data: any) => void) {
-    this.ws.on("user left", callback);
   }
 }
