@@ -137,6 +137,7 @@ export class CallComponent implements AfterViewInit, OnDestroy {
         user.selfDestroy();
         console.log("usuario saiu da chamada");
         this.notification("Participante saiu da chamada");
+        this.adjustGrid();
       }
     });
 
@@ -146,6 +147,7 @@ export class CallComponent implements AfterViewInit, OnDestroy {
         this.users.delete(data.id);
         user.selfDestroy();
         this.notification("Participante foi desconectado");
+        this.adjustGrid();
       }
     });
   }
