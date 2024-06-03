@@ -342,6 +342,8 @@ export class CallComponent implements AfterViewInit, OnDestroy {
     } else {
       container.style.gridTemplateColumns = 'repeat(2, 1fr)';
     }
+
+    console.log("atualizando grid, video remotos:",numVideos);
   }
 
   ngOnDestroy(): void {
