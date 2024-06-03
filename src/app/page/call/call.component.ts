@@ -257,7 +257,8 @@ export class CallComponent implements AfterViewInit, OnDestroy {
       if (user.player) {
         return;
       }
-      user.player = this.addVideoPlayer(event.streams[0]);
+
+      user.player = this.addVideoPlayer(event.streams[0], user);
     };
 
     pc.ondatachannel = (event) => {
@@ -268,9 +269,14 @@ export class CallComponent implements AfterViewInit, OnDestroy {
     return pc;
   }
 
-  private addVideoPlayer(stream: MediaStream) {
+  private addVideoPlayer(stream: MediaStream, user: User) {
     const template = this.renderer.createElement("div");
     this.renderer.addClass(template, "card-video");
+
+    const name = this.renderer.createElement("div");
+    this.renderer.addClass(name, "name-user");
+    const text = this.renderer.createText(user.id);
+    
 
     const video = this.renderer.createElement("video");
     this.renderer.addClass(video, "responsive-video");
@@ -278,11 +284,15 @@ export class CallComponent implements AfterViewInit, OnDestroy {
     video.srcObject = stream;
 
     this.renderer.appendChild(template, video);
+    this.renderer.appendChild(template, name);
+    this.renderer.appendChild(name, text);
     this.renderer.appendChild(
       this.remoteVideosContainer.nativeElement,
       template
     );
+
     this.adjustGrid();
+
     return template;
   }
 
@@ -316,9 +326,23 @@ export class CallComponent implements AfterViewInit, OnDestroy {
   }
 
   private adjustGrid() {
-    const numVideos = this.remoteVideosContainer.nativeElement.children.length;
-    const numColumns = Math.ceil(Math.sqrt(numVideos));
-    this.remoteVideosContainer.nativeElement.style.gridTemplateColumns = `repeat(${numColumns}, 1fr)`;
+    const container = this.remoteVideosContainer.nativeElement;
+    const numVideos = container.children.length;
+    const numCols = Math.ceil(Math.sqrt(numVideos));
+    const numRows = Math.ceil(numVideos / numCols);
+    const containerHeight = container.clientHeight;
+
+    const videoHeight = containerHeight / numRows;
+
+    Array.from(container.children).forEach((child: any) => {
+      child.style.height = `${videoHeight}px`;
+    });
+
+    if (numVideos === 1) {
+      container.style.gridTemplateColumns = '1fr'; // Define apenas uma coluna
+    }else {
+      container.style.gridTemplateColumns = 'repeat(2, 1fr)';
+    }
   }
 
   ngOnDestroy(): void {
