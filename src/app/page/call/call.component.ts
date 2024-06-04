@@ -85,9 +85,10 @@ export class CallComponent implements AfterViewInit, OnDestroy {
     this.socket.on("disconnect-user", (data) => {
       var user = this.users.get(data.id);
       if (user) {
-        this.notification("Participante saiu da sala");
+        this.notification("Participante foi desconectado");
         this.users.delete(data.id);
         user.selfDestroy();
+        this.adjustGrid();
       }
     });
 
@@ -95,7 +96,6 @@ export class CallComponent implements AfterViewInit, OnDestroy {
       let user = new userModel(data.id);
       user.pc = this.createPeer(user);
       this.users.set(data.id, user);
-
       this.createOffer(user, this.socket);
     });
 
@@ -121,7 +121,9 @@ export class CallComponent implements AfterViewInit, OnDestroy {
     this.socket.on("candidate", (data) => {
       var user = this.users.get(data.id);
       if (user) {
-        user.pc.addIceCandidate(data.candidate);
+        if (user.pc.signalingState == 'stable') {
+          user.pc.addIceCandidate(data.candidate);
+        }
       } else {
         let user = new userModel(data.id);
         user.pc = this.createPeer(user);
@@ -132,24 +134,15 @@ export class CallComponent implements AfterViewInit, OnDestroy {
 
     this.socket.on("leave room", (data) => {
       var user = this.users.get(data.id);
-      if (data.id) {
-        this.users.delete(data.id);
+      if (user) {
         user.selfDestroy();
+        this.users.delete(data.id);
         console.log("usuario saiu da chamada");
         this.notification("Participante saiu da chamada");
         this.adjustGrid();
       }
     });
 
-    this.socket.on("disconnect-user", (data) => {
-      var user = this.users.get(data.id);
-      if (user) {
-        this.users.delete(data.id);
-        user.selfDestroy();
-        this.notification("Participante foi desconectado");
-        this.adjustGrid();
-      }
-    });
   }
 
   private initConnection() {
@@ -191,39 +184,25 @@ export class CallComponent implements AfterViewInit, OnDestroy {
     socket: Socket
   ) {
     console.log(
-      "Current signaling state before setRemoteDescription:",
+      `user:${user.id},Current signaling state before setRemoteDescription:`,
       user.pc.signalingState
     );
+
+    if (user.pc.signalingState !== 'stable') {
+      return;
+    }
 
     user.pc
       .setRemoteDescription(offer)
       .then(() => {
-        console.log(
-          "Current signaling state after setRemoteDescription:",
-          user.pc.signalingState
-        );
-
-        console.log(
-          "Creating answer. Current signaling state:",
-          user.pc.signalingState
-        );
 
         return user.pc.createAnswer();
+
       })
       .then((answer) => {
-        console.log(
-          "Current signaling state before setLocalDescription:",
-          user.pc.signalingState
-        );
-
         return user.pc.setLocalDescription(answer);
       })
       .then(() => {
-        console.log(
-          "Set local description. Current signaling state:",
-          user.pc.signalingState
-        );
-
         socket.emit("answer", {
           id: user.id,
           answer: user.pc.localDescription,
@@ -260,9 +239,13 @@ export class CallComponent implements AfterViewInit, OnDestroy {
       user.player = this.addVideoPlayer(event.streams[0], user);
     };
 
+    pc.oniceconnectionstatechange = (event) => {
+      console.log(user.pc.iceConnectionState); //debug
+    }
+
     pc.ondatachannel = (event) => {
       user.dc = event.channel;
-      this.setupDataChannel(user.dc);
+      this.setupDataChannel(user.dc); //debug
     };
 
     return pc;
@@ -312,6 +295,9 @@ export class CallComponent implements AfterViewInit, OnDestroy {
   }
 
   public leaveRoom() {
+    this.users.forEach((user) => {
+      user.selfDestroy();
+    })
     this.socket.emit("leave room", this.roomId);
     this.route.navigate(["/"]);
     this.notification("Você saiu da sala");
@@ -343,7 +329,7 @@ export class CallComponent implements AfterViewInit, OnDestroy {
       container.style.gridTemplateColumns = 'repeat(2, 1fr)';
     }
 
-    console.log("atualizando grid, video remotos:",numVideos);
+    console.log("atualizando grid, video remotos:", numVideos);
   }
 
   ngOnDestroy(): void {
