@@ -40,7 +40,7 @@ export class CallComponent implements AfterViewInit, OnDestroy {
   private socket;
 
   private attemptsCamera: number = 0;
-
+  public isMuted: boolean = false;
   public users = new Map();
 
   private rtcConfiguration: RTCConfiguration = {
@@ -391,6 +391,23 @@ export class CallComponent implements AfterViewInit, OnDestroy {
         this.route.navigate(["/"]);
       }
     });
+  }
+
+  public muted() {
+    const audioTrack = this.myStream.getAudioTracks()[0];
+    if (audioTrack) {
+      if (this.isMuted) {
+        audioTrack.enabled = true;
+        this.isMuted = false;
+        this.notification("Você reativou o microfone");
+        
+      } else {
+        audioTrack.enabled = false;
+        this.isMuted = true;
+        this.notification("Você desativou o microfone");
+        
+      }
+    }
   }
 
   ngOnDestroy(): void {

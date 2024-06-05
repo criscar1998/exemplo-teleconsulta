@@ -3,6 +3,9 @@
     <button mat-flat-button color="warn" (click)="leaveRoom()">
       <mat-icon>call_end</mat-icon>
     </button>
+    <button mat-stroked-button [class.active-muted]="isMuted" (click)="muted()">
+      <mat-icon class="white-icon">mic_off</mat-icon>
+    </button>
   </div>
   <div class="grid-system" #remoteVideosContainer></div>
   <div class="box-video" [class.empty-room]="users.size == 0">
