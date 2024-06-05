@@ -14,5 +14,14 @@ import { MAT_DIALOG_DATA, MatDialog, MatDialogContent, MatDialogModule, MatDialo
   styles: ``
 })
 export class ConfirmationComponent {
-  constructor(@Inject(MAT_DIALOG_DATA) public data: { title: string, message: string }) { }
+  constructor(@Inject(MAT_DIALOG_DATA) public data: { title: string, message: string, textButtonAccept?:string, textButtonCancel?:string }) {
+
+    if (!this.data.textButtonAccept) {
+      this.data.textButtonAccept = 'Confirmar';
+    }
+    if (!this.data.textButtonCancel) {
+      this.data.textButtonCancel = 'Cancelar';
+    }
+
+  }
 }

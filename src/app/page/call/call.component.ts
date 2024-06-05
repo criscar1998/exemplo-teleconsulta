@@ -3,7 +3,6 @@ import {
   Component,
   ElementRef,
   OnDestroy,
-  OnInit,
   Renderer2,
   ViewChild,
 } from "@angular/core";
@@ -18,11 +17,20 @@ import { userModel } from "../../_models/user.model";
 import { Socket } from "socket.io-client";
 import { MatGridListModule } from "@angular/material/grid-list";
 import { stunServers } from "../../_utils/iceServers";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { MessageComponent } from "../../component/dialog/message/message.component";
+import { ConfirmationComponent } from "../../component/dialog/confirmation/confirmation.component";
 
 @Component({
   selector: "app-call",
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatGridListModule],
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatIconModule,
+    MatGridListModule,
+    MatDialogModule,
+  ],
   templateUrl: "./call.component.html",
   styleUrls: ["./call.component.scss"],
 })
@@ -31,10 +39,12 @@ export class CallComponent implements AfterViewInit, OnDestroy {
   private myStream!: MediaStream;
   private socket;
 
+  private attemptsCamera: number = 0;
+
   public users = new Map();
 
   private rtcConfiguration: RTCConfiguration = {
-    iceServers: stunServers
+    iceServers: stunServers,
   };
 
   //view child
@@ -48,7 +58,8 @@ export class CallComponent implements AfterViewInit, OnDestroy {
     private activeRoute: ActivatedRoute,
     private _snackBar: MatSnackBar,
     private renderer: Renderer2,
-    private route: Router
+    private route: Router,
+    private dialog: MatDialog
   ) {
     this.roomId = this.activeRoute.snapshot.params["id"];
     this.socket = this.ws.connectToRoute();
@@ -72,7 +83,14 @@ export class CallComponent implements AfterViewInit, OnDestroy {
       .catch((error) => {
         console.error("Error accessing media devices.", error);
         this.notification("Erro em acessar a webcam e microfone");
-        this.route.navigate(["/"]);
+        if (error.name === "NotAllowedError") {
+          if (this.attemptsCamera < 2) {
+            this.dialogCameraNotAllow();
+            this.attemptsCamera++;
+          } else {
+            this.dialogMessageHelpEnableCamera();
+          }
+        }
       });
   }
 
@@ -122,7 +140,7 @@ export class CallComponent implements AfterViewInit, OnDestroy {
     this.socket.on("candidate", (data) => {
       var user = this.users.get(data.id);
       if (user) {
-        if (user.pc.signalingState == 'stable') {
+        if (user.pc.signalingState == "stable") {
           user.pc.addIceCandidate(data.candidate);
         }
       } else {
@@ -143,7 +161,6 @@ export class CallComponent implements AfterViewInit, OnDestroy {
         this.adjustGrid();
       }
     });
-
   }
 
   private initConnection() {
@@ -189,16 +206,14 @@ export class CallComponent implements AfterViewInit, OnDestroy {
       user.pc.signalingState
     );
 
-    if (user.pc.signalingState !== 'stable') {
+    if (user.pc.signalingState !== "stable") {
       return;
     }
 
     user.pc
       .setRemoteDescription(offer)
       .then(() => {
-
         return user.pc.createAnswer();
-
       })
       .then((answer) => {
         return user.pc.setLocalDescription(answer);
@@ -242,7 +257,7 @@ export class CallComponent implements AfterViewInit, OnDestroy {
 
     pc.oniceconnectionstatechange = (event) => {
       console.log(user.pc.iceConnectionState); //debug
-    }
+    };
 
     pc.ondatachannel = (event) => {
       user.dc = event.channel;
@@ -259,7 +274,6 @@ export class CallComponent implements AfterViewInit, OnDestroy {
     const name = this.renderer.createElement("div");
     this.renderer.addClass(name, "name-user");
     const text = this.renderer.createText(user.id);
-
 
     const video = this.renderer.createElement("video");
     this.renderer.addClass(video, "responsive-video");
@@ -299,7 +313,7 @@ export class CallComponent implements AfterViewInit, OnDestroy {
   public leaveRoom() {
     this.users.forEach((user) => {
       user.selfDestroy();
-    })
+    });
     this.socket.emit("leave room", this.roomId);
     this.route.navigate(["/"]);
     this.notification("Você saiu da sala");
@@ -326,12 +340,57 @@ export class CallComponent implements AfterViewInit, OnDestroy {
     });
 
     if (numVideos === 1) {
-      container.style.gridTemplateColumns = '1fr'; // Define apenas uma coluna
+      container.style.gridTemplateColumns = "1fr"; // Define apenas uma coluna
     } else {
-      container.style.gridTemplateColumns = 'repeat(2, 1fr)';
+      container.style.gridTemplateColumns = "repeat(2, 1fr)";
     }
 
     console.log("atualizando grid, video remotos:", numVideos);
+  }
+
+  private dialogCameraNotAllow() {
+    let dialogRef = this.dialog.open(ConfirmationComponent, {
+      data: {
+        textButtonAccept: "Tentar Novamente",
+        title: "Permissão de Câmera Necessária",
+        message:
+          "Você não permitiu o acesso à câmera. Para participar da sala, é necessário conceder a permissão de uso da câmera.",
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.startLocalStream();
+      } else {
+        this.route.navigate(["/"]);
+      }
+    });
+  }
+
+  private dialogMessageHelpEnableCamera() {
+    let dialogRef = this.dialog.open(ConfirmationComponent, {
+      data: {
+        textButtonAccept: "Recarregar página",
+        textButtonCancel: "Não quero fazer isso",
+        title: "Permissão de Câmera Necessária",
+        message:
+          "Você negou o acesso à câmera várias vezes. Para conceder a permissão, siga as instruções abaixo:<br><br>" +
+          "1. Abra as configurações do seu navegador.<br>" +
+          "2. Navegue até a seção de privacidade e segurança.<br>" +
+          "3. Encontre a seção de configurações de sites ou permissões de sites.<br>" +
+          "4. Procure a opção para câmera e encontre o nosso site na lista.<br>" +
+          '5. Altere a permissão da câmera para "Permitir".<br>' +
+          "6. Recarregue a página e tente novamente.",
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        window.location.reload();
+      } else {
+        this.route.navigate(["/"]);
+      }
+    });
   }
 
   ngOnDestroy(): void {

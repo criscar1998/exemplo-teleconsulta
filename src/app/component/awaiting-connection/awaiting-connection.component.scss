@@ -1,15 +1,23 @@
-.awaiting-connection {
+.container {
+  margin: 0 15px;
+}
+
+.wrapper{
   width: 100%;
   height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.awaiting-connection {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
   flex-direction: column;
-  .container {
-    width: 100%;
-    max-width: 400px;
-    h5{
-      font-size: calc(1em + 1vw);
-    }
+  align-items: center;
+  justify-content: center;
+  h5 {
+    font-size: calc(1em + 1vw);
   }
 }
