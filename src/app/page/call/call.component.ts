@@ -72,6 +72,7 @@ export class CallComponent implements AfterViewInit, OnDestroy {
       .catch((error) => {
         console.error("Error accessing media devices.", error);
         this.notification("Erro em acessar a webcam e microfone");
+        this.route.navigate(["/"]);
       });
   }
 
@@ -264,6 +265,7 @@ export class CallComponent implements AfterViewInit, OnDestroy {
     this.renderer.addClass(video, "responsive-video");
     video.autoplay = true;
     video.srcObject = stream;
+    this.renderer.setAttribute(video, "playsinline", "true");
 
     this.renderer.appendChild(template, video);
     this.renderer.appendChild(template, name);
