@@ -18,7 +18,6 @@ import { Socket } from "socket.io-client";
 import { MatGridListModule } from "@angular/material/grid-list";
 import { stunServers } from "../../_utils/iceServers";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
-import { MessageComponent } from "../../component/dialog/message/message.component";
 import { ConfirmationComponent } from "../../component/dialog/confirmation/confirmation.component";
 
 @Component({
@@ -340,7 +339,7 @@ export class CallComponent implements AfterViewInit, OnDestroy {
     });
 
     if (numVideos === 1) {
-      container.style.gridTemplateColumns = "1fr"; // Define apenas uma coluna
+      container.style.gridTemplateColumns = "1fr";
     } else {
       container.style.gridTemplateColumns = "repeat(2, 1fr)";
     }
@@ -390,6 +389,15 @@ export class CallComponent implements AfterViewInit, OnDestroy {
       } else {
         this.route.navigate(["/"]);
       }
+    });
+  }
+
+  public copyLink(){
+    const currentUrl = window.location.origin + this.route.url;
+    navigator.clipboard.writeText(currentUrl).then(() => {
+      this._snackBar.open("Link de acesso copiado, agora basta enviar para o outro participante.");
+    }).catch(err => {
+      console.error('Erro ao copiar a URL', err);
     });
   }
 
